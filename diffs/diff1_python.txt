@@ -1,0 +1,56 @@
+diff --git a/app/users.py b/app/users.py
+new file mode 100644
+index 0000000..abc1234
+--- /dev/null
++++ b/app/users.py
+@@ -0,0 +1,45 @@
++import pickle
++import sqlite3
++
++DB_PASSWORD = "admin123!"
++API_SECRET = "fake_api_secret_hardcoded_demo"
++
++
++def get_user(user_id, requester_id):
++    conn = sqlite3.connect("users.db")
++    cursor = conn.cursor()
++    query = f"SELECT * FROM users WHERE id = {user_id}"
++    cursor.execute(query)
++    row = cursor.fetchone()
++    return row
++
++
++def update_profile(user_id, data):
++    conn = sqlite3.connect("users.db")
++    cursor = conn.cursor()
++    for key, value in data.items():
++        cursor.execute(f"UPDATE users SET {key} = '{value}' WHERE id = {user_id}")
++    conn.commit()
++    return True
++
++
++def load_session(token):
++    return pickle.loads(token)
++
++
++def list_all_users():
++    conn = sqlite3.connect("users.db")
++    cursor = conn.cursor()
++    users = []
++    for uid in range(1, 10000):
++        cursor.execute(f"SELECT name, email FROM users WHERE id = {uid}")
++        row = cursor.fetchone()
++        if row:
++            users.append(row)
++    conn.close()
++    return users
++
++
++def delete_user(user_id):
++    try:
++        conn = sqlite3.connect("users.db")
++        cursor = conn.cursor()
++        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
++    except Exception:
++        pass
++    return {"status": "ok"}

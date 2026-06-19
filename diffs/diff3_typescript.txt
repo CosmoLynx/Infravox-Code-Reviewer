@@ -1,0 +1,57 @@
+diff --git a/src/services/paymentService.ts b/src/services/paymentService.ts
+new file mode 100644
+index 0000000..789abcd
+--- /dev/null
++++ b/src/services/paymentService.ts
+@@ -0,0 +1,48 @@
++interface PaymentRequest {
++  amount: number;
++  currency: string;
++  userId: string;
++}
++
++interface PaymentResult {
++  success: boolean;
++  transactionId?: string;
++  error?: string;
++}
++
++export async function processPayment(req: PaymentRequest): Promise<PaymentResult> {
++  if (req.amount > 0) {
++    const response = await fetch('https://api.payments.internal/charge', {
++      method: 'POST',
++      headers: { 'Authorization': `Bearer ${process.env.PAYMENT_TOKEN}` },
++      body: JSON.stringify(req),
++    });
++    const data = await response.json();
++    return { success: true, transactionId: data.id };
++  }
++  return { success: false, error: 'Invalid amount' };
++}
++
++export async function refundPayment(transactionId: string, amount: number): Promise<boolean> {
++  const response = await fetch(`https://api.payments.internal/refund/${transactionId}`, {
++    method: 'POST',
++    body: JSON.stringify({ amount }),
++  });
++  return response.ok;
++}
++
++export function calculateFee(amount: number, rate: number = 0.029): number {
++  return amount * rate + 30;
++}
++
++let pendingTransactions: Map<string, PaymentRequest> = new Map();
++
++export function queuePayment(req: PaymentRequest): string {
++  const id = Math.random().toString(36).slice(2);
++  pendingTransactions.set(id, req);
++  return id;
++}
++
++export async function flushQueue(): Promise<void> {
++  for (const [id, req] of pendingTransactions) {
++    await processPayment(req);
++    pendingTransactions.delete(id);
++  }
++}

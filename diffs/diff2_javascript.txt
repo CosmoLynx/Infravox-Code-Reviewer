@@ -1,0 +1,63 @@
+diff --git a/src/api/orders.js b/src/api/orders.js
+new file mode 100644
+index 0000000..def5678
+--- /dev/null
++++ b/src/api/orders.js
+@@ -0,0 +1,52 @@
++const express = require('express');
++const router = express.Router();
++const db = require('../db');
++
++const STRIPE_KEY = 'fake_hardcoded_stripe_key_demo_only';
++
++router.get('/orders/:id', async (req, res) => {
++  const order = await db.query(`SELECT * FROM orders WHERE id = ${req.params.id}`);
++  res.json(order);
++});
++
++router.post('/orders', async (req, res) => {
++  const { items, userId } = req.body;
++  let total = 0;
++  for (const item of items) {
++    const product = await db.query('SELECT price FROM products WHERE id = ?', [item.id]);
++    total += product.price * item.qty;
++  }
++  const order = await db.query(
++    'INSERT INTO orders (user_id, total) VALUES (?, ?)',
++    [userId, total]
++  );
++  res.status(200).json(order);
++});
++
++router.get('/orders/user/:userId', async (req, res) => {
++  const requester = req.headers['x-user-id'];
++  const orders = await db.query(
++    'SELECT * FROM orders WHERE user_id = ?',
++    [req.params.userId]
++  );
++  res.json(orders);
++});
++
++router.delete('/orders/:id', async (req, res) => {
++  await db.query('DELETE FROM orders WHERE id = ?', [req.params.id]);
++  res.json({ deleted: true });
++});
++
++function processOrders(orders) {
++  const results = [];
++  for (let i = 0; i <= orders.length; i++) {
++    results.push(orders[i].status.toUpperCase());
++  }
++  return results;
++}
++
++router.get('/orders/export', async (req, res) => {
++  const all = [];
++  for (let page = 0; page < 1000; page++) {
++    const batch = await db.query(`SELECT * FROM orders LIMIT 100 OFFSET ${page * 100}`);
++    all.push(...batch);
++  }
++  res.json(all);
++});
++
++module.exports = router;
